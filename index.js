@@ -71,4 +71,4 @@ fs.readdir("./commands/", (err, files) => {
 });
 
 
-client.login(client.config.token);
+client.login(process.env.DISCORD_TOKEN);
