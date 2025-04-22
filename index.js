@@ -1,76 +1,68 @@
-const fs = require('fs');
-const Discord = require("discord.js");
- const client = new Discord.Client({ disableMentions: 'everyone' });
-const Eco = require("quick.eco");
-client.eco = new Eco.Manager(); // quick.eco
-client.db = Eco.db; // quick.db
-client.config = require("./botConfig");
-client.commands = new Discord.Collection();
-client.aliases = new Discord.Collection();
-// Accessing the Discord Public Key securely
-const PUBLIC_KEY = process.env.DISCORD_PUBLIC_KEY
+import { REST } from '@discordjs/rest';
+import { Routes } from 'discord-api-types/v10';
 
+// Use Wrangler secrets to securely store your keys
+const PUBLIC_KEY = process.env.DISCORD_PUBLIC_KEY;
+const BOT_TOKEN = process.env.DISCORD_BOT_TOKEN;
+
+const rest = new REST({ version: '10' }).setToken(BOT_TOKEN);
+
+// Initialize stock values
 let AmazonStock = 227, 
     AppleStock = 242, 
     MicrosoftStock = 343, 
     NvidiaStock = 142, 
     AlphabetStock = 176;
 
+// Update stock prices every 10 seconds
 setInterval(updatePrices, 10000);
 function updatePrices() {
   AmazonStock = AmazonStock + (Math.floor(Math.random() * (AmazonStock * 0.15)) + 1) - (Math.floor(Math.random() * (AmazonStock * 0.15)) + 1);
-  client.shop.Amazon.cost = AmazonStock;
   AppleStock = AppleStock + (Math.floor(Math.random() * (AppleStock * 0.15)) + 1) - (Math.floor(Math.random() * (AppleStock * 0.15)) + 1);
-  client.shop.Apple.cost = AppleStock;
   MicrosoftStock = MicrosoftStock + (Math.floor(Math.random() * (MicrosoftStock * 0.15)) + 1) - (Math.floor(Math.random() * (MicrosoftStock * 0.15)) + 1);
-  client.shop.Microsoft.cost = MicrosoftStock;
   NvidiaStock = NvidiaStock + (Math.floor(Math.random() * (NvidiaStock * 0.15)) + 1) - (Math.floor(Math.random() * (NvidiaStock * 0.15)) + 1);
-  client.shop.Nvidia.cost = NvidiaStock;
   AlphabetStock = AlphabetStock + (Math.floor(Math.random() * (AlphabetStock * 0.15)) + 1) - (Math.floor(Math.random() * (AlphabetStock * 0.15)) + 1);
-  client.shop.Alphabet.cost = AlphabetStock;
 }
 
-client.shop = {
-  "Amazon" : {
-    cost: AmazonStock
-  },
-  "Apple" : {
-    cost: AppleStock
-  },
-  "Microsoft" : {
-    cost: MicrosoftStock
-  },
-  "Nvidia" : {
-    cost: NvidiaStock
-  },
-  "Alphabet" : {
-    cost: AlphabetStock
-  }
+// Define the stock items and their prices
+const shop = {
+  "Amazon": { cost: AmazonStock },
+  "Apple": { cost: AppleStock },
+  "Microsoft": { cost: MicrosoftStock },
+  "Nvidia": { cost: NvidiaStock },
+  "Alphabet": { cost: AlphabetStock },
 };
 
-fs.readdir("./events/", (err, files) => {
-    if (err) return console.error(err);
-    files.forEach(f => {
-        if (!f.endsWith(".js")) return;
-        const event = require(`./events/${f}`);
-        let eventName = f.split(".")[0];
-        console.log(`Registering event: ${eventName}`);
-        client.on(eventName, event.bind(null, client));
+// Register commands and events
+async function registerCommandsAndEvents() {
+  try {
+    // Register slash commands (example for Discord)
+    await rest.put(Routes.applicationCommands('YOUR_APP_ID'), {
+      body: [
+        {
+          name: 'ping',
+          description: 'Replies with Pong!',
+        },
+        // Add more commands as needed
+      ],
     });
+
+    console.log('Successfully registered application commands.');
+  } catch (error) {
+    console.error('Error registering application commands:', error);
+  }
+
+  // Handling events
+  // Since Cloudflare Workers don't support `fs` and file reading, you need to define events explicitly
+  // Example:
+  self.addEventListener('fetch', (event) => {
+    event.respondWith(new Response('Pong!'));
+  });
+}
+
+registerCommandsAndEvents();
+
+// Handle the Worker response logic
+addEventListener('fetch', (event) => {
+  event.respondWith(new Response('Hello from Cloudflare Worker!'));
 });
-
-fs.readdir("./commands/", (err, files) => {
-    if (err) return console.error(err);
-    files.forEach(f => {
-        if (!f.endsWith(".js")) return;
-        let command = require(`./commands/${f}`);
-        client.commands.set(command.help.name, command);
-        console.log(`Registering command: ${command}`);
-        command.help.aliases.forEach(alias => {
-            client.aliases.set(alias, command.help.name);
-        });
-    });
-});
-
-
-client.login(client.config.token);
