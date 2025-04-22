@@ -7,6 +7,8 @@ client.db = Eco.db; // quick.db
 client.config = require("./botConfig");
 client.commands = new Discord.Collection();
 client.aliases = new Discord.Collection();
+// Accessing the Discord Public Key securely
+const PUBLIC_KEY = process.env.DISCORD_PUBLIC_KEY
 
 let AmazonStock = 227, 
     AppleStock = 242, 
